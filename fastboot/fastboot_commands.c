@@ -141,7 +141,7 @@ static void cmd_oem_ram_ptable(const char *arg, void *data, unsigned sz)
 	}
 
 	// print header
-	fastboot_send_string_human("ID\tAddress                              \t  Size\tAttr\tCat\tDomain\tType\tParts\n", 0);
+	fastboot_send_string_human((char*)"ID\tAddress                              \t  Size\tAttr\tCat\tDomain\tType\tParts\n", 0);
 
 	// print table
 	for(i = 0; i<smem_get_ram_ptable_len(); i++) {
