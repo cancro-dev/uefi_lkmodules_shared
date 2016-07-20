@@ -144,6 +144,12 @@ void cmd_oem_lk_log(const char *arg, void *data, unsigned sz)
     fastboot_send_string_human(lk_log_getbuf(), lk_log_getsize());
     fastboot_okay("");
 }
+
+void cmd_oem_lk_log_prev(const char *arg, void *data, unsigned sz)
+{
+    fastboot_send_string_human(lk_log_getprevbuf(), lk_log_getprevsize());
+    fastboot_okay("");
+}
 #endif
 
 static char* get_human_size(double size, char *buf)
@@ -569,6 +575,7 @@ void aboot_fastboot_register_commands_ex(void)
         {"oem poweroff", cmd_poweroff},
 #if WITH_DEBUG_LOG_BUF
         {"oem lk_log", cmd_oem_lk_log},
+        {"oem lk_log_prev", cmd_oem_lk_log_prev},
 #endif
         {"oem ram-ptable", cmd_oem_ram_ptable},
         {"oem fbconfig", cmd_oem_fbconfig},
