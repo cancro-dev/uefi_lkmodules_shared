@@ -1,7 +1,7 @@
 /*
  * Copyright (c) 2008 Travis Geiselbrecht
  *
- * Copyright (c) 2009, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2014, The Linux Foundation. All rights reserved.
  *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
@@ -22,27 +22,45 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include <compiler.h>
-#include <sys/types.h>
-#include <uefiapi.h>
-#include <platform/timer.h>
+#include <asm.h>
 
-extern void* edk2_base;
+FUNCTION(uefiapi_fn_wrapper_template)
+    // backup state
+    push {r11,lr}
+    push {r0-r3}
 
-/* the global critical section count */
-int critical_section_count = 1;
+    // entry check
+    adr r11, fn_entry
+    ldr r11, [r11]
+    blx r11
+    mov r11, r0
+    pop {r0-r3}
+    push {r11}
 
-/* called from crt0.S */
-void kmain(void) __NO_RETURN __EXTERNALLY_VISIBLE;
-void kmain(void)
-{
-    void (*entry)(void *) __NO_RETURN = edk2_base;
+    // run original function
+    adr r11, fn_hookee
+    ldr r11, [r11]
+    blx r11
+    pop {r11}
+    push {r0-r3}
 
-    // BOOT :D
-    entry(&uefiapi);
-}
+    // exit check
+    mov r0, r11
+    adr r11, fn_exit
+    ldr r11, [r11]
+    blx r11
+    pop {r0-r3}
 
-void thread_sleep(time_t delay)
-{
-    mdelay(delay);
-}
+    // return
+    pop {r11, pc}
+
+fn_entry:
+    .word 0
+fn_hookee:
+    .word 0
+fn_exit:
+    .word 0
+
+.global uefiapi_fn_wrapper_template_end
+uefiapi_fn_wrapper_template_end:
+

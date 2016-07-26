@@ -4,22 +4,19 @@
 #include <platform.h>
 
 typedef enum {
-	LKARGS_UEFI_BM_NORMAL = 0,
-	LKARGS_UEFI_BM_RECOVERY,
+    LKARGS_UEFI_BM_NORMAL = 0,
+    LKARGS_UEFI_BM_RECOVERY,
 } lkargs_uefi_bootmode;
 
-uint32_t lkargs_get_machinetype(void);
 const char* lkargs_get_command_line(void);
 struct list_node* lkargs_get_command_line_list(void);
 const char* lkargs_get_panel_name(const char* key);
-uint32_t lkargs_get_platform_id(void);
-uint32_t lkargs_get_variant_id(void);
-uint32_t lkargs_get_soc_rev(void);
 lkargs_uefi_bootmode lkargs_get_uefi_bootmode(void);
 void* lkargs_get_tags_backup(void);
 size_t lkargs_get_tags_backup_size(void);
-bool lkargs_has_board_info(void);
 void atag_parse(void);
+int qciditem_get(const char* name, uint32_t* datap);
+uint32_t qciditem_get_zero(const char* name);
 
 bool lkargs_has_meminfo(void);
 unsigned *lkargs_gen_meminfo_atags(unsigned *ptr);
