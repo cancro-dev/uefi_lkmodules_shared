@@ -1,8 +1,6 @@
 /*
  * Copyright (c) 2008 Travis Geiselbrecht
  *
- * Copyright (c) 2009, The Linux Foundation. All rights reserved.
- *
  * Permission is hereby granted, free of charge, to any person obtaining
  * a copy of this software and associated documentation files
  * (the "Software"), to deal in the Software without restriction,
@@ -22,27 +20,17 @@
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
  * SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-#include <compiler.h>
+#ifndef __LIB_HEAP_H
+#define __LIB_HEAP_H
+
 #include <sys/types.h>
-#include <uefiapi.h>
-#include <platform/timer.h>
 
-extern void* edk2_base;
+void *libboot_platform_heap_alloc(size_t, unsigned int alignment);
+void *libboot_platform_heap_realloc(void *ptr, size_t size);
+void libboot_platform_heap_free(void *);
 
-/* the global critical section count */
-int critical_section_count = 1;
+void libboot_platform_heap_init(void* base, size_t len);
 
-/* called from crt0.S */
-void kmain(void) __NO_RETURN __EXTERNALLY_VISIBLE;
-void kmain(void)
-{
-    void (*entry)(void *) __NO_RETURN = edk2_base;
 
-    // BOOT :D
-    entry(&uefiapi);
-}
 
-void thread_sleep(time_t delay)
-{
-    mdelay(delay);
-}
+#endif

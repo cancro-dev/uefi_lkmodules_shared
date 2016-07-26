@@ -11,6 +11,8 @@
 #include <platform/iomap.h>
 #include <dev/fbcon.h>
 #include <linux/elf.h>
+#include <kernel/thread.h>
+#include <boot_stats.h>
 
 #if WITH_LIB_BIO
 #include <lib/bio.h>
@@ -20,10 +22,14 @@
 #include <lib/atagparse.h>
 #endif
 
+#ifdef WITH_LIB_BOOT
+#include <lib/boot.h>
+#endif
+
 #include "fastboot.h"
 #include "bootimg.h"
 
-const char* smem_attr2str(int i)
+const char *smem_attr2str(int i)
 {
     switch (i) {
         case DEFAULT_ATTRB:
@@ -37,7 +43,7 @@ const char* smem_attr2str(int i)
     }
 }
 
-const char* smem_category2str(int i)
+const char *smem_category2str(int i)
 {
     switch (i) {
         case DEFAULT_CATEGORY:
@@ -69,7 +75,7 @@ const char* smem_category2str(int i)
     }
 }
 
-const char* smem_domain2str(int i)
+const char *smem_domain2str(int i)
 {
     switch (i) {
         case DEFAULT_DOMAIN:
@@ -85,7 +91,7 @@ const char* smem_domain2str(int i)
     }
 }
 
-const char* smem_type2str(int i)
+const char *smem_type2str(int i)
 {
     switch (i) {
         case SYS_MEMORY:
@@ -107,7 +113,7 @@ const char* smem_type2str(int i)
 typedef void (*fastboot_cmd_fn) (const char *, void *, unsigned);
 
 struct fastboot_cmd_desc {
-    const char * name;
+    const char *name;
     fastboot_cmd_fn cb;
 };
 
@@ -152,10 +158,10 @@ void cmd_oem_lk_log_prev(const char *arg, void *data, unsigned sz)
 }
 #endif
 
-static char* get_human_size(double size, char *buf)
+static char *get_human_size(double size, char *buf)
 {
     int i = 0;
-    const char* units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
+    const char *units[] = {"B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB"};
     while (size>=1024) {
         size/=1024;
         i++;
@@ -197,12 +203,12 @@ static void cmd_oem_ram_ptable(const char *arg, void *data, unsigned sz)
 
 static void cmd_oem_fbconfig(const char *arg, void *data, unsigned sz)
 {
-    struct fbcon_config* config = fbcon_display();
+    struct fbcon_config *config = fbcon_display();
     char buf[1024];
 
     fastboot_info("fbcon_config:");
 
-    snprintf(buf, sizeof(buf), "\tbase: %p (end: %p)", (void*)config->base, config->base + (config->width * config->height * config->bpp/3));
+    snprintf(buf, sizeof(buf), "\tbase: %p (end: %p)", (void *)config->base, config->base + (config->width * config->height * config->bpp/3));
     fastboot_info(buf);
     snprintf(buf, sizeof(buf), "\twidth: %u", config->width);
     fastboot_info(buf);
@@ -255,7 +261,7 @@ typedef struct {
     uint32_t cert_chain_size;
 } qcom_bootimg_t;
 
-static const char* qcombootimg2str(uint32_t id)
+static const char *qcombootimg2str(uint32_t id)
 {
     switch (id) {
         case 0:
@@ -360,15 +366,15 @@ static void cmd_oem_findbootimages(const char *arg, void *data, unsigned sz)
     readsize = ROUNDUP(readsize, mmc_get_device_blocksize());
 
     // allocate memory
-    qcom_bootimg_t* bootimg = (qcom_bootimg_t*) memalign(CACHE_LINE, readsize);
+    qcom_bootimg_t *bootimg = (qcom_bootimg_t *) memalign(CACHE_LINE, readsize);
     if (!bootimg) {
         fastboot_okay("error allocating memory");
         return;
     }
-    struct boot_img_hdr* aimg = (struct boot_img_hdr*)bootimg;
-    qcom_sbl1_header_t* sbl1img = (qcom_sbl1_header_t*)bootimg;
-    Elf32_Ehdr* elf32hdr = (Elf32_Ehdr*)bootimg;
-    Elf64_Ehdr* elf64hdr = (Elf64_Ehdr*)bootimg;
+    struct boot_img_hdr *aimg = (struct boot_img_hdr *)bootimg;
+    qcom_sbl1_header_t *sbl1img = (qcom_sbl1_header_t *)bootimg;
+    Elf32_Ehdr *elf32hdr = (Elf32_Ehdr *)bootimg;
+    Elf64_Ehdr *elf64hdr = (Elf64_Ehdr *)bootimg;
 
     unsigned i = 0;
     unsigned count = partition_get_count();
@@ -383,7 +389,7 @@ static void cmd_oem_findbootimages(const char *arg, void *data, unsigned sz)
         if (partsize<readsize)
             continue;
 
-        if (mmc_read(offset, (uint32_t*)bootimg, readsize))
+        if (mmc_read(offset, (uint32_t *)bootimg, readsize))
             continue;
 
 
@@ -457,11 +463,11 @@ static void cmd_oem_findbootimages(const char *arg, void *data, unsigned sz)
     fastboot_okay("");
 }
 
-static void bio_foreach_cb(void* pdata, const char* name)
+static void bio_foreach_cb(void *pdata, const char *name)
 {
     char buf[1024];
 
-    bdev_t* dev = bio_open(name);
+    bdev_t *dev = bio_open(name);
     if (!dev) return;
 
     snprintf(buf, sizeof(buf),
@@ -514,7 +520,7 @@ static void cmd_oem_memfill(const char *arg, void *data, unsigned sz)
     arg += 9;
     uint32_t length = hex2unsigned(arg);
     for (i = 0; i < length; i++) {
-        *(volatile uint8_t*)(testbase + i) = 0xff;
+        *(volatile uint8_t *)(testbase + i) = 0xff;
     }
     fastboot_okay("");
 }
@@ -530,13 +536,13 @@ static void cmd_oem_lastkmsg(const char *arg, void *data, unsigned sz)
     addr = hex2unsigned(arg);
 #endif
 
-    struct persistent_ram_buffer* rambuf = (void*)addr;
+    struct persistent_ram_buffer *rambuf = (void *)addr;
     if (rambuf->sig==PERSISTENT_RAM_SIG) {
         snprintf(buf, sizeof(buf), "found last_kmsg at %p", rambuf);
         fastboot_info(buf);
 
 
-        uint8_t* data = &rambuf->data[0];
+        uint8_t *data = &rambuf->data[0];
         fastboot_send_string_human(data, rambuf->size);
     } else {
         snprintf(buf, sizeof(buf), "last_kmsg not found at %p", rambuf);
@@ -549,13 +555,155 @@ static void cmd_oem_lastkmsg(const char *arg, void *data, unsigned sz)
 #if defined(WITH_LIB_ATAGPARSE) && defined(WITH_LIB_BASE64)
 static void cmd_oem_dumpatags(const char *arg, void *data, unsigned sz)
 {
-    void* tags = lkargs_get_tags_backup();
+    void *tags = lkargs_get_tags_backup();
     size_t tags_size = lkargs_get_tags_backup_size();
 
     if (tags && tags_size)
         fastboot_send_buf(tags, tags_size);
 
     fastboot_okay("");
+}
+#endif
+
+#if defined(WITH_LIB_BASE64)
+static void cmd_oem_dumpmem(const char *arg, void *data, unsigned sz)
+{
+    uint32_t addr = hex2unsigned(arg);
+    arg += 9;
+    uint32_t size = hex2unsigned(arg);
+
+    if (addr && size)
+        fastboot_send_buf((void *)addr, size);
+
+    fastboot_okay("");
+}
+#endif
+
+#ifdef WITH_LIB_BOOT
+#define IS_ARM64(ptr) (((struct kernel64_hdr *)(ptr))->magic_64 == KERNEL64_HDR_MAGIC) ? true : false
+
+typedef void libboot_entry_func_ptr(unsigned, unsigned, unsigned);
+void libboot_platform_heap_init(void *base, size_t len);
+void target_uninit(void);
+void platform_uninit(void);
+
+static void boot_jump(bootimg_context_t *context)
+{
+    void (*entry)(unsigned, unsigned, unsigned) = (libboot_entry_func_ptr *)(PA((addr_t)context->kernel_addr));
+
+    /* Perform target specific cleanup */
+    target_uninit();
+
+    /* Turn off splash screen if enabled */
+#if DISPLAY_SPLASH_SCREEN
+    target_display_shutdown();
+#endif
+
+    dprintf(INFO, "booting linux @ %p, ramdisk @ %p (%lu), tags/device tree @ %p\n",
+            entry, (void *)context->ramdisk_addr, context->ramdisk_size, (void *)context->tags_addr);
+
+    enter_critical_section();
+
+    /* do any platform specific cleanup before kernel entry */
+    platform_uninit();
+
+    arch_disable_cache(UCACHE);
+
+#if ARM_WITH_MMU
+    arch_disable_mmu();
+#endif
+    bs_set_timestamp(BS_KERNEL_ENTRY);
+
+    if (IS_ARM64(context->kernel_addr))
+        // Jump to a 64bit kernel
+        scm_elexec_call((paddr_t)context->kernel_addr, context->kernel_arguments[2]);
+    else
+        // Jump to a 32bit kernel
+        entry(context->kernel_arguments[0], context->kernel_arguments[1], context->kernel_arguments[2]);
+}
+
+static void print_error_stack(void)
+{
+    // print errors
+    uint32_t i;
+    char **error_stack = libboot_error_stack_get();
+    for (i=0; i<libboot_error_stack_count(); i++)
+        printf("[%d] %s\n", i, error_stack[i]);
+    libboot_error_stack_reset();
+}
+
+static void update_ker_tags_rdisk_addr(bootimg_context_t *context, bool is_arm64)
+{
+    /* overwrite the destination of specified for the project */
+#ifdef ABOOT_IGNORE_BOOT_HEADER_ADDRS
+    if (is_arm64)
+        context->kernel_addr = ABOOT_FORCE_KERNEL64_ADDR;
+    else
+        context->kernel_addr = ABOOT_FORCE_KERNEL_ADDR;
+    context->ramdisk_addr = ABOOT_FORCE_RAMDISK_ADDR;
+    context->tags_addr = ABOOT_FORCE_TAGS_ADDR;
+#endif
+}
+
+static void *libboot_add_custom_atags(void *tags)
+{
+    return lkargs_atag_insert_unknown(tags);
+}
+
+static void libboot_patch_fdt(void *fdt)
+{
+#if DEVICE_TREE
+    lkargs_insert_chosen(fdt);
+#endif
+}
+
+static void cmd_boot(const char *arg, void *data, unsigned sz)
+{
+    // init
+    libboot_platform_heap_init(data + sz, target_get_max_flash_size() - sz);
+    libboot_init();
+
+    // setup context
+    bootimg_context_t context;
+    libboot_init_context(&context);
+    context.add_custom_atags = libboot_add_custom_atags;
+    context.patch_fdt = libboot_patch_fdt;
+
+    // identify type
+    int rc = libboot_identify_memory(data, sz, &context);
+    if (!rc) {
+        // load image
+        rc = libboot_load(&context);
+        if (!rc) {
+
+            // update loading addresses
+            update_ker_tags_rdisk_addr(&context, IS_ARM64(context.kernel_data));
+
+            // prepare for boot
+            rc = libboot_prepare(&context);
+            if (!rc) {
+                // just in case one got ignored
+                print_error_stack();
+
+                // disable fastboot
+                fastboot_okay("");
+                fastboot_stop();
+
+                // BOOT :)
+                boot_jump(&context);
+                dprintf(CRITICAL, "BOOT RETURNED\n");
+            }
+        }
+    }
+
+    // print errors
+    print_error_stack();
+
+    // cleanup
+    libboot_free_context(&context);
+    libboot_uninit();
+
+    fastboot_fail("can't boot");
 }
 #endif
 
@@ -586,6 +734,14 @@ void aboot_fastboot_register_commands_ex(void)
         {"oem memfill", cmd_oem_memfill},
 #if defined(WITH_LIB_ATAGPARSE) && defined(WITH_LIB_BASE64)
         {"oem dump-atags", cmd_oem_dumpatags},
+#endif
+#if defined(WITH_LIB_BASE64)
+        {"oem dump-mem", cmd_oem_dumpmem},
+#endif
+
+        // these work because fastboot checks the last commands first
+#ifdef WITH_LIB_BOOT
+        {"boot", cmd_boot},
 #endif
 #endif
     };
